@@ -39,4 +39,5 @@ public interface UserService {
     public void updateUserDetails(User user) throws CustomError;
 
 
+
 }
