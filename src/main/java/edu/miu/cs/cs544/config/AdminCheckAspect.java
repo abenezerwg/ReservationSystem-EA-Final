@@ -24,7 +24,8 @@ public class AdminCheckAspect {
 
     @Before("execution(* edu.miu.cs.cs544.service.ProductService.addProduct(..)) || " +
             "execution(* edu.miu.cs.cs544.service.ProductService.updateProduct(..)) || " +
-            "execution(* edu.miu.cs.cs544.service.ProductService.deleteProduct(..))")
+            "execution(* edu.miu.cs.cs544.service.ProductService.deleteProduct(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.CustomerService.*(..))")
     public void checkAdminUser(JoinPoint joinPoint) throws CustomError {
         System.out.println(joinPoint.getSignature().getName());
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
