@@ -66,4 +66,9 @@ spring:
 The `registration` properties are used to configure the OAuth2 clients. You should replace `[...]` with the actual client configurations.
 
 The `provider` properties are used to configure the OAuth2 providers. In this case, it's configured to use Google as the OAuth2 provider.
-```
+
+# UML Diagrams 
+* Path: src/resources/UML Class Diagram.jpg
+
+![](src/main/resources/UML Class Diagram.jpg): 
+```markdown
