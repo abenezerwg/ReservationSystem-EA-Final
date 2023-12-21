@@ -118,7 +118,14 @@ public class UserRegistrationController {
         //send verification Email
         log.info("Click the link to verify your account: " + url);
     }
-
+    @GetMapping("/verifyRegistration")
+    public String verifyRegistration(@RequestParam("token") String token) {
+        String result = userService.validateVerificationToken(token);
+        if(result.equalsIgnoreCase("valid")) {
+            return "User Verified Successfully";
+        }
+        return "Bad User";
+    }
 
     private String applicationUrl(HttpServletRequest request) {
         return "http://" +

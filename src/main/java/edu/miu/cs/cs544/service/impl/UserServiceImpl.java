@@ -54,44 +54,61 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User registerUser(CustomerDTO customerDTO,HttpServletRequest request) throws CustomError {
+    public User registerUser(CustomerDTO customerDTO, HttpServletRequest request) throws CustomError {
 
-        if ( emailExists(customerDTO.getEmail()) ) {
+        if (emailExists(customerDTO.getEmail())) {
             User user = userRepository.findByEmail(customerDTO.getEmail());
 
-            throw new CustomError("There is an account with the given email address: "+ customerDTO.getEmail());
-        }else {
-        User user = new User();
-        user.setUserName(customerDTO.getUserName());
-        user.setEmail(customerDTO.getEmail());
-        user.setRoleType(RoleType.CLIENT);
-        user.setUserPass(passwordEncoder.encode(customerDTO.getUserPass()));
-        userRepository.save(user);
-        Customer customer = getCustomer(customerDTO, user);
-        // Save the Customer entity
-        customerRepository.save(customer);
-            System.out.println((long)user.getId());
-        Long userId = (long)user.getId();
+            throw new CustomError("There is an account with the given email address: " + customerDTO.getEmail());
+        } else {
+            User user = new User();
+            user.setUserName(customerDTO.getUserName());
+            user.setEmail(customerDTO.getEmail());
+            user.setRoleType(RoleType.CLIENT);
+            user.setUserPass(passwordEncoder.encode(customerDTO.getUserPass()));
 
-        return user;
-    }}
+            AuditData auditData = new AuditData();
+            auditData.setCreatedBy(customerDTO.getUserName());
+            auditData.setUpdatedBy(customerDTO.getUserName());
+            auditData.setCreatedOn(LocalDateTime.now());
+            auditData.setUpdatedOn(LocalDateTime.now());
+
+            user.setAuditData(auditData);
+            userRepository.save(user);
+            Customer customer = getCustomer(customerDTO, user);
+            // Save the Customer entity
+            customerRepository.save(customer);
+            System.out.println((long) user.getId());
+            Long userId = (long) user.getId();
+
+            return user;
+        }
+    }
 
     @Override
     public User registerAdmin(UserDTO userDTO) throws CustomError {
-                User user = new User();
-                user.setUserName(userDTO.getUserName());
-                user.setEmail(userDTO.getEmail());
-                user.setRoleType(RoleType.ADMIN);
-                user.setUserPass(passwordEncoder.encode(userDTO.getUserPass()));
-                userRepository.save(user);
+        User user = new User();
 
-                return user;
-        }
+        //Add Audit Data
+        AuditData auditData = new AuditData();
+        auditData.setCreatedBy(userDTO.getUserName());
+        auditData.setUpdatedBy(userDTO.getUserName());
+        auditData.setCreatedOn(LocalDateTime.now());
+        auditData.setUpdatedOn(LocalDateTime.now());
+
+        user.setAuditData(auditData);
+        user.setUserName(userDTO.getUserName());
+        user.setEmail(userDTO.getEmail());
+        user.setRoleType(RoleType.ADMIN);
+        user.setUserPass(passwordEncoder.encode(userDTO.getUserPass()));
+        userRepository.save(user);
+
+        return user;
+    }
 
     private Customer getCustomer(CustomerDTO customerDTO, User user) {
         Address physicalAddress = mapAddressDTOToEntity(customerDTO.getCustomerPhysicalAddressDTO());
         Address billingAddress = mapAddressDTOToEntity(customerDTO.getCustomerBillingAddressDTO());
-
 
 
         Customer customer = new Customer();
@@ -160,19 +177,19 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void createVerificationToken(User user, String token) {
-        VerificationToken verificationToken = new VerificationToken(user,token);
+        VerificationToken verificationToken = new VerificationToken(user, token);
         verificationTokenRepository.save(verificationToken);
     }
 
     @Override
     public String validateVerificationToken(String token) {
         VerificationToken verificationToken = verificationTokenRepository.findByToken(token);
-        if(verificationToken == null){
+        if (verificationToken == null) {
             return "invalidToken";
         }
         User user = verificationToken.getUser();
         Calendar calendar = Calendar.getInstance();
-        if((verificationToken.getExpiryDate().getTime() - calendar.getTime().getTime()) <= 0){
+        if ((verificationToken.getExpiryDate().getTime() - calendar.getTime().getTime()) <= 0) {
             verificationTokenRepository.delete(verificationToken);
             return "expired";
         }
@@ -197,8 +214,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void createPasswordResetTokenForUser(User user, String token) {
-     PasswordResetToken passwordResetToken = new PasswordResetToken(user,token);
-     passwordResetTokenRepository.save(passwordResetToken);
+        PasswordResetToken passwordResetToken = new PasswordResetToken(user, token);
+        passwordResetTokenRepository.save(passwordResetToken);
     }
 
     @Override
@@ -235,15 +252,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean checkIfValidOldPassword(User user, String oldPassword) {
-        return passwordEncoder.matches(oldPassword,user.getUserPass());
+        return passwordEncoder.matches(oldPassword, user.getUserPass());
     }
+
     @Override
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
     @Override
-    public User getUserById(int id) throws CustomError{
+    public User getUserById(int id) throws CustomError {
         return userRepository.findById(id).orElseThrow(() -> new CustomError("User not found"));
     }
 
@@ -251,10 +269,12 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(int id) throws CustomError {
         if (userRepository.findById(id).isEmpty()) {
             throw new CustomError("User with ID : " + id + " does not exist");
-        } else{
-             verificationTokenRepository.deleteById((long)id);
-             customerRepository.deleteById(id);
-             userRepository.deleteById(id);}
+        } else {
+            passwordResetTokenRepository.deleteById((long) id);
+            verificationTokenRepository.deleteById((long) id);
+            customerRepository.deleteById(id);
+            userRepository.deleteById(id);
+        }
     }
 
     @Override
@@ -272,47 +292,35 @@ public class UserServiceImpl implements UserService {
     }
 
 
-@Override
+    @Override
     public String getEmailFromAuthentication() throws CustomError {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
             return (String) jwtAuthenticationToken.getTokenAttributes().get("email");
         } else if (authentication instanceof UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken) {
             return usernamePasswordAuthenticationToken.getName();
-        }
-        else if (authentication != null && authentication.getPrincipal() instanceof OAuth2AuthenticatedPrincipal oauth2User) {
+        } else if (authentication != null && authentication.getPrincipal() instanceof OAuth2AuthenticatedPrincipal oauth2User) {
             String email = oauth2User.getAttribute("email");
             Customer user = customerRepository.findByEmail(email);
-            if(user== null){
+            if (user == null) {
                 throw new CustomError("User not found", HttpStatus.BAD_REQUEST);
             }
             return user.getEmail();
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Authentication method not supported");
         }
     }
+
     private String applicationUrl(HttpServletRequest request) {
         return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
     }
+
     private Boolean checkPassword(UserDetails user, String rawPassword) {
-        if(passwordEncoder.matches(rawPassword, user.getPassword())) {
+        if (passwordEncoder.matches(rawPassword, user.getPassword())) {
             return true;
-        }
-        else {
+        } else {
             throw new BadCredentialsException("Bad Credentials");
         }
     }
 
-    public String verificationTokenMail(long id,HttpServletRequest request) {
-        String token = verificationTokenRepository.findById(id).getToken();
-
-
-        String url = applicationUrl(request)
-                + "/registrationConfirm?token="
-                + token;
-//        sendNewMail(user.getEmail(),"Registration Confirmation","Thank you for registering. Please click on the below link to activate your account."+url);
-        //send verification Email
-        return ("Email: Click the link to verify your account: " + url);
-    }
 }

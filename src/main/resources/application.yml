@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/final_project_ea?useSSL=false&serverTimezone=UTC
-    username: root
-    password: root12345
+    username:
+    password:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       connection-timeout: 30000
@@ -21,9 +21,9 @@ spring:
       client:
         registration:
           google:
-            provider: google
-            client-id: 754317980356-5kha3jmphg9tm7oirmn7pac4fbauj85o.apps.googleusercontent.com
-            client-secret: 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
+            provider:
+            client-id:
+            client-secret:
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/google"
             scope:

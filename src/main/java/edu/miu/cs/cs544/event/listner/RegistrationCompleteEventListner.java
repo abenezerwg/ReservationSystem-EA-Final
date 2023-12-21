@@ -28,7 +28,7 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
         //Send the email
 
         String url = registrationCompleteEvent.getAppUrl()
-                + "/registrationConfirm?token="
+                + "/verifyRegistration?token="
                 + Token;
 //        sendNewMail(user.getEmail(),"Registration Confirmation","Thank you for registering. Please click on the below link to activate your account."+url);
         //send verification Email
