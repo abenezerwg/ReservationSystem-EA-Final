@@ -21,9 +21,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,10 +52,10 @@ public class UserRegistrationController {
         return new ResponseEntity<>("Successfully Registered, check your email to verify your account", HttpStatus.OK);
     }
     @PostMapping("/api/register")
-    public ResponseEntity<?> registerAdmin(@RequestBody UserDTO userDTO, HttpServletRequest request, Authentication authentication){
+    public ResponseEntity<?> registerAdmin(@RequestBody UserDTO userDTO, HttpServletRequest request){
 
         try {
-            User user = userService.registerAdmin(userDTO,getEmailFromAuthentication(authentication));
+            User user = userService.registerAdmin(userDTO);
             eventPublisher.publishEvent(new RegistrationCompleteEvent(user, applicationUrl(request)));
         }
         catch (CustomError e){
@@ -94,28 +91,8 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
         }
         return url;
     }
-    @GetMapping("/")
-    public ResponseEntity<?> hello(Authentication authentication) throws CustomError{
-       return new ResponseEntity<>(getEmailFromAuthentication(authentication), HttpStatus.OK);
-    }
-    private String getEmailFromAuthentication(Authentication authentication) throws CustomError {
-        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
-            return (String) jwtAuthenticationToken.getTokenAttributes().get("email");
-        } else if (authentication instanceof UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken) {
-            return usernamePasswordAuthenticationToken.getName();
-        }
-        else if (authentication != null && authentication.getPrincipal() instanceof OAuth2AuthenticatedPrincipal oauth2User) {
-            String email = oauth2User.getAttribute("email");
-            Customer user = customerRepository.findByEmail(email);
-            if(user== null){
-                throw new CustomError("User not found", HttpStatus.BAD_REQUEST);
-            }
-            return user.getEmail();
-        }
-        else {
-            throw new IllegalArgumentException("Authentication method not supported");
-        }
-    }
+
+
     private String passwordResetTokenMail(User user, String token, String appUrl) {
         String url = appUrl + "/savePassword?id=" + user.getId() + "&token=" + token;
         //send password reset Email
@@ -151,7 +128,7 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
             return "Invalid Old Password";
         }
         //Save new password
-     userService.changeUserPassword(user, passwordDTO.getNewPassword());
+        userService.changeUserPassword(user, passwordDTO.getNewPassword());
         return "password changed successfully";
     }
     private void resendVerificationToken(User user, VerificationToken newToken, String appUrl) {
@@ -164,40 +141,14 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
         return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
     }
 
-    @DeleteMapping("/api/deleteUser")
-    public ResponseEntity<?> deleteUser(Authentication authentication) {
-        try {
-            User user = userService.findUserByEmail(authentication.getName());
-            if (user != null) {
-                userService.deleteUser(user.getId());
-                return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
-            }
-        } catch (CustomError e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+
+
+
+    //
+    @GetMapping("/")
+    public ResponseEntity<?> hello(Authentication authentication) throws CustomError{
+       return new ResponseEntity<>((authentication), HttpStatus.OK);
     }
 
-    @PutMapping("/api/updateUser")
-    public ResponseEntity<?> updateUser(@RequestBody UserUpdateDTO userUpdateDTO, Authentication authentication) {
-        try {
-            User user = userService.findUserByEmail(authentication.getName());
-            if (user != null) {
-                // Update user details based on the fields available in userUpdateDTO
-                if (userUpdateDTO.getName() != null) {
-                    user.setUserName(userUpdateDTO.getName());
-                }
-                if (userUpdateDTO.getEmail() != null) {
-                    user.setEmail(userUpdateDTO.getEmail());
-                }
-                userService.updateUserDetails(user);
-                return new ResponseEntity<>("User updated successfully", HttpStatus.OK);
-            } else {
-                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
-            }
-        } catch (CustomError e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
-    }
+
 }

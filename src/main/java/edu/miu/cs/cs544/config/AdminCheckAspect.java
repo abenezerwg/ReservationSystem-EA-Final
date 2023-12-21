@@ -25,14 +25,16 @@ public class AdminCheckAspect {
     @Before("execution(* edu.miu.cs.cs544.service.ProductService.addProduct(..)) || " +
             "execution(* edu.miu.cs.cs544.service.ProductService.updateProduct(..)) || " +
             "execution(* edu.miu.cs.cs544.service.ProductService.deleteProduct(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.UserService.getAllUsers(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.UserService.getUserById(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.UserService.deleteUser(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.UserService.updateUserDetails(..)) || " +
+            "execution(* edu.miu.cs.cs544.service.UserService.registerAdmin(..)) || " +
             "execution(* edu.miu.cs.cs544.service.CustomerService.*(..))")
     public void checkAdminUser(JoinPoint joinPoint) throws CustomError {
-        System.out.println(joinPoint.getSignature().getName());
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println(authentication);
         if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
             String email = (String) jwtAuthenticationToken.getTokenAttributes().get("email");
-            System.out.println("email: " + email);
             User user = userService.findUserByEmail(email);
             if (user == null || user.getRoleType() != RoleType.ADMIN) {
                 throw new CustomError("You are not authorized to perform this action");

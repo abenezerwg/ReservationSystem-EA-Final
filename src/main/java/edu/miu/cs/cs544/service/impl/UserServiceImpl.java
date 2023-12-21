@@ -1,10 +1,9 @@
 package edu.miu.cs.cs544.service.impl;
 
 import edu.miu.cs.cs544.domain.*;
-import edu.miu.cs.cs544.domain.dto.AddressDTO;
-import edu.miu.cs.cs544.domain.dto.CustomerDTO;
-import edu.miu.cs.cs544.domain.dto.StateDTO;
-import edu.miu.cs.cs544.domain.dto.UserDTO;
+import edu.miu.cs.cs544.domain.adapter.ProductAdapter;
+import edu.miu.cs.cs544.domain.adapter.UserAdapter;
+import edu.miu.cs.cs544.domain.dto.*;
 import edu.miu.cs.cs544.repository.CustomerRepository;
 import edu.miu.cs.cs544.repository.PasswordResetTokenRepository;
 import edu.miu.cs.cs544.repository.UserRepository;
@@ -12,13 +11,23 @@ import edu.miu.cs.cs544.repository.VerificationTokenRepository;
 import edu.miu.cs.cs544.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -28,6 +37,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
 
     private PasswordEncoder passwordEncoder;
 
@@ -61,12 +73,7 @@ public class UserServiceImpl implements UserService {
         return user;
     }}
     @Override
-    public User registerAdmin(UserDTO userDTO, String email) throws CustomError {
-
-        if (isAdminUser(email)) {
-            if (emailExists(userDTO.getEmail())) {
-                throw new CustomError("Please enter a valid email address", HttpStatus.BAD_REQUEST);
-            } else {
+    public User registerAdmin(UserDTO userDTO) throws CustomError {
                 User user = new User();
                 user.setUserName(userDTO.getUserName());
                 user.setEmail(userDTO.getEmail());
@@ -75,11 +82,6 @@ public class UserServiceImpl implements UserService {
                 userRepository.save(user);
 
                 return user;
-            }
-        }
-    else{
-            throw new CustomError("You are not authorized to perform this action", HttpStatus.UNAUTHORIZED);
-        }
         }
 
     private Customer getCustomer(CustomerDTO customerDTO, User user) {
@@ -230,18 +232,74 @@ public class UserServiceImpl implements UserService {
     public boolean checkIfValidOldPassword(User user, String oldPassword) {
         return passwordEncoder.matches(oldPassword,user.getUserPass());
     }
-
     @Override
-    public void deleteUser(Integer id) throws CustomError {
-        User user = userRepository.findById(id).orElse(null);
-        if (user == null) {
-            throw new CustomError("User not found");
-        }
-        userRepository.delete(user);
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 
     @Override
-    public void updateUserDetails(User user) throws CustomError {
-            userRepository.save(user);
+    public User getUserById(int id) throws CustomError{
+        return userRepository.findById(id).orElseThrow(() -> new CustomError("User not found"));
+    }
+
+    @Override
+    public void deleteUser(int id) throws CustomError {
+        if (userRepository.findById(id).isEmpty()) {
+            throw new CustomError("User with ID : " + id + " does not exist");
+        } else{
+             verificationTokenRepository.deleteById((long)id);
+             customerRepository.deleteById(id);
+             userRepository.deleteById(id);}
+    }
+
+    @Override
+    public User updateUserDetails(int id, UserDTO updatedUser) throws CustomError {
+        User existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new CustomError("User with ID : " + id + " does not exist"));
+
+        if (updatedUser.getUserName() != null) {
+            existingUser.setUserName(updatedUser.getUserName());
         }
+        if (updatedUser.getRoleType() != null) {
+            existingUser.setRoleType(updatedUser.getRoleType());
+        }
+        return userRepository.save(existingUser);
+    }
+
+
+
+    private String getEmailFromAuthentication() throws CustomError {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            return (String) jwtAuthenticationToken.getTokenAttributes().get("email");
+        } else if (authentication instanceof UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken) {
+            return usernamePasswordAuthenticationToken.getName();
+        }
+        else if (authentication != null && authentication.getPrincipal() instanceof OAuth2AuthenticatedPrincipal oauth2User) {
+            String email = oauth2User.getAttribute("email");
+            Customer user = customerRepository.findByEmail(email);
+            if(user== null){
+                throw new CustomError("User not found", HttpStatus.BAD_REQUEST);
+            }
+            return user.getEmail();
+        }
+        else {
+            throw new IllegalArgumentException("Authentication method not supported");
+        }
+    }
+
+    public Boolean authenticate(Authentication authentication) throws AuthenticationException {
+        String username = authentication.getName();
+        String password = authentication.getCredentials().toString();
+        UserDetails user= customUserDetailsService.loadUserByUsername(username);
+        return checkPassword(user,password);
+    }
+    private Boolean checkPassword(UserDetails user, String rawPassword) {
+        if(passwordEncoder.matches(rawPassword, user.getPassword())) {
+            return true;
+        }
+        else {
+            throw new BadCredentialsException("Bad Credentials");
+        }
+    }
 }

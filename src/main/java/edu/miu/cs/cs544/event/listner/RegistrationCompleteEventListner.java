@@ -21,7 +21,6 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
 
     @Override
     public void onApplicationEvent(RegistrationCompleteEvent registrationCompleteEvent) {
-        //Create the Verification Token for the user with link
 
         User user = registrationCompleteEvent.getUser();
         String Token = UUID.randomUUID().toString();
@@ -36,9 +35,9 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
         System.out.println("Click the link to verify your account: " + url);
 
     }
-    @Autowired
-    private JavaMailSender mailSender;
-
+//    @Autowired
+//    private JavaMailSender mailSender;
+//
 //    public void sendNewMail(String to, String subject, String body) {
 //        SimpleMailMessage message = new SimpleMailMessage();
 //        message.setTo(to);

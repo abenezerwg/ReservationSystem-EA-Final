@@ -1,20 +1,6 @@
 spring:
-  mail:
-    host: smtp.gmail.com
-    username: aben.wg@gmail.com
-    password: njqgcpiitpceapgy
-    port: 587
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-          ssl:
-            trust: smtp.gmail.com
-
   datasource:
-    url: jdbc:mysql://localhost:3306/final_project_ea?useSSL=true&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/final_project_ea?useSSL=false&serverTimezone=UTC
     username: root
     password: root12345
     driver-class-name: com.mysql.cj.jdbc.Driver
