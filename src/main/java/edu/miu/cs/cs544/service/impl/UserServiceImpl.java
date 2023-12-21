@@ -1,14 +1,13 @@
 package edu.miu.cs.cs544.service.impl;
 
 import edu.miu.cs.cs544.domain.*;
-import edu.miu.cs.cs544.domain.adapter.ProductAdapter;
-import edu.miu.cs.cs544.domain.adapter.UserAdapter;
 import edu.miu.cs.cs544.domain.dto.*;
 import edu.miu.cs.cs544.repository.CustomerRepository;
 import edu.miu.cs.cs544.repository.PasswordResetTokenRepository;
 import edu.miu.cs.cs544.repository.UserRepository;
 import edu.miu.cs.cs544.repository.VerificationTokenRepository;
 import edu.miu.cs.cs544.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -55,10 +54,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User registerUser(CustomerDTO customerDTO) throws CustomError {
+    public User registerUser(CustomerDTO customerDTO,HttpServletRequest request) throws CustomError {
 
         if ( emailExists(customerDTO.getEmail()) ) {
-            throw new CustomError("There is an account with that email address: " + customerDTO.getEmail()+"If you forgot your password click on reset link");
+            User user = userRepository.findByEmail(customerDTO.getEmail());
+
+            throw new CustomError("There is an account with the given email address: "+ customerDTO.getEmail());
         }else {
         User user = new User();
         user.setUserName(customerDTO.getUserName());
@@ -66,12 +67,15 @@ public class UserServiceImpl implements UserService {
         user.setRoleType(RoleType.CLIENT);
         user.setUserPass(passwordEncoder.encode(customerDTO.getUserPass()));
         userRepository.save(user);
-
         Customer customer = getCustomer(customerDTO, user);
         // Save the Customer entity
         customerRepository.save(customer);
+            System.out.println((long)user.getId());
+        Long userId = (long)user.getId();
+
         return user;
     }}
+
     @Override
     public User registerAdmin(UserDTO userDTO) throws CustomError {
                 User user = new User();
@@ -153,10 +157,6 @@ public class UserServiceImpl implements UserService {
         return customerRepository.findByEmail(email) != null;
     }
 
-    public boolean isAdminUser(String email) {
-        User user = userRepository.findByEmail(email);
-        return user != null && user.getRoleType() == RoleType.ADMIN;
-    }
 
     @Override
     public void createVerificationToken(User user, String token) {
@@ -202,14 +202,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String ValidatePasswordResetToken(String token) {
-        PasswordResetToken passwordResetToken = passwordResetTokenRepository.findByToken(token);
-        if(passwordResetToken == null){
-            return "invalidToken";
+    public String validatePasswordResetToken(String token) {
+        PasswordResetToken passwordResetToken
+                = passwordResetTokenRepository.findByToken(token);
+
+        if (passwordResetToken == null) {
+            return "invalid";
         }
+
         User user = passwordResetToken.getUser();
-        Calendar calendar = Calendar.getInstance();
-        if((passwordResetToken.getExpiryDate().getTime() - calendar.getTime().getTime()) <= 0){
+        Calendar cal = Calendar.getInstance();
+
+        if ((passwordResetToken.getExpiryDate().getTime()
+                - cal.getTime().getTime()) <= 0) {
             passwordResetTokenRepository.delete(passwordResetToken);
             return "expired";
         }
@@ -267,8 +272,8 @@ public class UserServiceImpl implements UserService {
     }
 
 
-
-    private String getEmailFromAuthentication() throws CustomError {
+@Override
+    public String getEmailFromAuthentication() throws CustomError {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
             return (String) jwtAuthenticationToken.getTokenAttributes().get("email");
@@ -287,12 +292,8 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("Authentication method not supported");
         }
     }
-
-    public Boolean authenticate(Authentication authentication) throws AuthenticationException {
-        String username = authentication.getName();
-        String password = authentication.getCredentials().toString();
-        UserDetails user= customUserDetailsService.loadUserByUsername(username);
-        return checkPassword(user,password);
+    private String applicationUrl(HttpServletRequest request) {
+        return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
     }
     private Boolean checkPassword(UserDetails user, String rawPassword) {
         if(passwordEncoder.matches(rawPassword, user.getPassword())) {
@@ -301,5 +302,17 @@ public class UserServiceImpl implements UserService {
         else {
             throw new BadCredentialsException("Bad Credentials");
         }
+    }
+
+    public String verificationTokenMail(long id,HttpServletRequest request) {
+        String token = verificationTokenRepository.findById(id).getToken();
+
+
+        String url = applicationUrl(request)
+                + "/registrationConfirm?token="
+                + token;
+//        sendNewMail(user.getEmail(),"Registration Confirmation","Thank you for registering. Please click on the below link to activate your account."+url);
+        //send verification Email
+        return ("Email: Click the link to verify your account: " + url);
     }
 }

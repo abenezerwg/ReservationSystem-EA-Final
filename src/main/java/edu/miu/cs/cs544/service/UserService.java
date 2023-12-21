@@ -6,7 +6,9 @@ import edu.miu.cs.cs544.domain.dto.UserDTO;
 import edu.miu.cs.cs544.domain.User;
 import edu.miu.cs.cs544.domain.VerificationToken;
 import edu.miu.cs.cs544.domain.dto.UserUpdateDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +16,7 @@ import java.util.Optional;
 
 @Service
 public interface UserService {
-    User registerUser(CustomerDTO customerDTO) throws CustomError;
+    User registerUser(CustomerDTO customerDTO, HttpServletRequest request) throws CustomError;
 
     User registerAdmin(UserDTO userDTO) throws CustomError;
 
@@ -29,7 +31,7 @@ public interface UserService {
 
     void createPasswordResetTokenForUser(User user, String token);
 
-    String ValidatePasswordResetToken(String token);
+    String validatePasswordResetToken(String token);
 
     Optional<User> getUserByPasswordToken(String token);
 
@@ -44,6 +46,7 @@ public interface UserService {
     public void deleteUser(int id) throws CustomError;
 
     User updateUserDetails(int id,UserDTO user) throws CustomError;
+   String getEmailFromAuthentication() throws CustomError;
 
 
 

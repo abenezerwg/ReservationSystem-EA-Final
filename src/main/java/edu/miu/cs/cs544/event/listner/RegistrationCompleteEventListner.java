@@ -19,7 +19,7 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
     @Autowired
     private UserService userService;
 
-    @Override
+
     public void onApplicationEvent(RegistrationCompleteEvent registrationCompleteEvent) {
 
         User user = registrationCompleteEvent.getUser();
@@ -32,7 +32,8 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
                 + Token;
 //        sendNewMail(user.getEmail(),"Registration Confirmation","Thank you for registering. Please click on the below link to activate your account."+url);
         //send verification Email
-        System.out.println("Click the link to verify your account: " + url);
+        log.info("Click the link to verify your account: " + url);
+
 
     }
 //    @Autowired

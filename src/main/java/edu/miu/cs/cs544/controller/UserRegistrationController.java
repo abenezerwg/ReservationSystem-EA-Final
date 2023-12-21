@@ -15,11 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,15 +31,14 @@ public class UserRegistrationController {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
-    @Autowired
-    private CustomerRepository customerRepository;
+
 
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody CustomerDTO customerDTO, HttpServletRequest request) {
 
         try {
-            User user = userService.registerUser(customerDTO);
+            User user = userService.registerUser(customerDTO,request);
             eventPublisher.publishEvent(new RegistrationCompleteEvent(user, applicationUrl(request)));
         }
         catch (CustomError e){
@@ -63,14 +58,6 @@ public class UserRegistrationController {
         }
         return new ResponseEntity<>("Successfully Registered, check your email to verify your account", HttpStatus.OK);
     }
-    @GetMapping("/registrationConfirm")
-    public ResponseEntity<?> confirmRegistration(@RequestParam("token") String token) {
-        String result = userService.validateVerificationToken(token);
-        if (result.equals("valid")) {
-            return  new ResponseEntity<>("User verified successfully", HttpStatus.OK);
-        }
-        return  new ResponseEntity<>("Bad Request", HttpStatus.BAD_REQUEST);
-    }
 
     @GetMapping("/resendRegistrationToken")
     public ResponseEntity<?> resendRegistrationToken(@RequestParam("token") String existingToken, HttpServletRequest request) {
@@ -81,7 +68,7 @@ public class UserRegistrationController {
     }
 
     @PostMapping("/resetPassword")
-public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletRequest request) {
+    public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletRequest request) {
         User user = userService.findUserByEmail(passwordDTO.getEmail());
         String url = applicationUrl(request);
         if (user != null) {
@@ -89,10 +76,8 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
             userService.createPasswordResetTokenForUser(user, token);
             url = passwordResetTokenMail(user, token, applicationUrl(request));
         }
-        return url;
+        return "Password Reset link: "+url;
     }
-
-
     private String passwordResetTokenMail(User user, String token, String appUrl) {
         String url = appUrl + "/savePassword?id=" + user.getId() + "&token=" + token;
         //send password reset Email
@@ -100,12 +85,9 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
         return url;
     }
 
-
-
-
-    @PostMapping("/api/savePassword")
+    @PostMapping("/savePassword")
     public ResponseEntity<?> savePassword(@RequestParam("token") String token, @RequestBody PasswordDTO passwordDTO) {
-        String result = userService.ValidatePasswordResetToken(token);
+        String result = userService.validatePasswordResetToken(token);
 
         if(!result.equals("valid")){
             return  new ResponseEntity<>("Bad Request", HttpStatus.BAD_REQUEST);
@@ -121,7 +103,7 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
 
     }
 
-    @PostMapping("/api/changePassword")
+    @PostMapping("/changePassword")
     public String ChangePassword(@RequestBody PasswordDTO passwordDTO) {
         User user = userService.findUserByEmail(passwordDTO.getEmail());
         if (!userService.checkIfValidOldPassword(user, passwordDTO.getOldPassword())) {
@@ -137,17 +119,18 @@ public String resetPassword(@RequestBody PasswordDTO passwordDTO, HttpServletReq
         log.info("Click the link to verify your account: " + url);
     }
 
+
     private String applicationUrl(HttpServletRequest request) {
-        return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+        return "http://" +
+                request.getServerName() +
+                ":" +
+                request.getServerPort() +
+                request.getContextPath();
     }
-
-
-
-
     //
     @GetMapping("/")
     public ResponseEntity<?> hello(Authentication authentication) throws CustomError{
-       return new ResponseEntity<>((authentication), HttpStatus.OK);
+       return new ResponseEntity<>((userService.getEmailFromAuthentication()), HttpStatus.OK);
     }
 
 

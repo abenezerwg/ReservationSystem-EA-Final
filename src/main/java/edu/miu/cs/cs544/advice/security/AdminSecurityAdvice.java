@@ -1,7 +1,6 @@
-package edu.miu.cs.cs544.config;
+package edu.miu.cs.cs544.advice.security;
 
 import edu.miu.cs.cs544.domain.CustomError;
-import edu.miu.cs.cs544.repository.UserRepository;
 import edu.miu.cs.cs544.domain.RoleType;
 import edu.miu.cs.cs544.domain.User;
 import edu.miu.cs.cs544.service.UserService;
@@ -11,13 +10,12 @@ import org.aspectj.lang.annotation.Before;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
-public class AdminCheckAspect {
+public class AdminSecurityAdvice {
 
     @Autowired
     private UserService userService;
