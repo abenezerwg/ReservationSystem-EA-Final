@@ -6,6 +6,8 @@ import edu.miu.cs.cs544.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -25,11 +27,23 @@ public class RegistrationCompleteEventListner implements ApplicationListener<Reg
         String Token = UUID.randomUUID().toString();
         userService.createVerificationToken(user,Token);
         //Send the email
+
         String url = registrationCompleteEvent.getAppUrl()
                 + "/registrationConfirm?token="
                 + Token;
+//        sendNewMail(user.getEmail(),"Registration Confirmation","Thank you for registering. Please click on the below link to activate your account."+url);
         //send verification Email
-        log.info("Click the link to verify your account: " + url);
+        System.out.println("Click the link to verify your account: " + url);
 
     }
+    @Autowired
+    private JavaMailSender mailSender;
+
+//    public void sendNewMail(String to, String subject, String body) {
+//        SimpleMailMessage message = new SimpleMailMessage();
+//        message.setTo(to);
+//        message.setSubject(subject);
+//        message.setText(body);
+//        mailSender.send(message);
+//    }
 }
