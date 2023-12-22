@@ -1,4 +1,4 @@
-```markdown
+
 # Application Configuration
 
 This guide explains how to set up the `application.yml` file for your Spring Boot application.
